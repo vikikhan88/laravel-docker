@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+    # Nigix Service
+    niginx: 
+    # PHP Service
+    php:
+    # Databse Service
+    database:
+    # PHPMyAdmin Service
+    phpmyadmin:
+    # Redis Service
+    redis:
+    # queues Service
+    queues:
+    # Websocket Service
+    websocket:
+    # node Service
+    node:
+    
