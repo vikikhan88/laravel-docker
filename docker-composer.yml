@@ -1,19 +1,130 @@
 version: "3.9"
+
+networks:
+    laravel:
+        name: laravel
+
 services:
-    # Nigix Service
-    niginx: 
+    # Nginx Service
+    nginx: 
+        build:
+            context: .
+            dockerfile: nginx.dockerfile
+        depends_on:
+            - php
+            - mysql
+        container_name: nginx
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - ./src:/var/www
+        networks:
+            - laravel
     # PHP Service
     php:
+        build:
+            context: .
+            dockerfile: php.dockerfile
+        container_name: php
+        volumes:
+            - ./src:/var/www
+        networks:
+            - laravel
     # Databse Service
     database:
+        image: mysql:8.0.27
+        container_name: mysql
+        ports:
+            - 3306:3306
+        volumes:
+            - ./mysql:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: laraveldb
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: secret
+        networks:
+            - laravel
+    # Composer Service
+    composer:
+        image: composer:latest
+        container_name: composer
+        volumes:
+            - ./src:/var/www
+        working_dir: /var/www
+        networks:
+            - laravel
+    # Artisan Service
+    artisan:
+        build:
+            context: .
+            dockerfile: php.dockerfile
+        container_name: artisan
+        volumes:
+            - ./src:/var/www
+        working_dir: /var/www
+        entrypoint: ['php', 'artisan']
+        networks:
+            - laravel
     # PHPMyAdmin Service
-    phpmyadmin:
+    phpmyadmin:    
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin
+        ports:
+            - "3400:80"
+        depends_on:
+        - mysql
     # Redis Service
     redis:
+        image: redis:alpine
+        container_name: redis
+        command: redis-server --appendonly yes --requirepass  "${REDIS_PASSWORD}"
+        ports:
+            - 6379:6379
     # queues Service
-    queues:
+    queue:
+        build:
+            context: .
+            target: php
+            args:
+                - APP_ENV=${APP_ENV}
+        container_name: queue
+        environment:
+            - APP_ENV=${APP_ENV}
+            - CONTAINER_ROLE=queue
+        working_dir: /var/www
+        volumes:
+            - ./src:/var/www
     # Websocket Service
     websocket:
+        build:
+            context: .
+            target: php
+            args:
+                - APP_ENV=${APP_ENV}
+        container_name: websocket
+        environment:
+            - APP_ENV=${APP_ENV}
+            - CONTAINER_ROLE=websocket
+        working_dir: /var/www
+        volumes:
+            - ./src:/var/www
+        ports:
+            - 6001:6001
+        depends_on:
+            - database
+            - redis
     # node Service
     node:
-    
+        image: node:current-alpine
+        container_name: npm
+        volumes:
+            - - ./src:/usr/src
+            - ./src/node_modules:/var/www
+        working_dir: /var/www
+        entrypoint: ['npm']
+        networks:
+            - laravel
+volumes:
+    db-data: ~
